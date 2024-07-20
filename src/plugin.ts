@@ -1,6 +1,6 @@
 import { PluginClass } from 'ultimate-crosscode-typedefs/modloader/mod'
 import { Mod1 } from './types'
-import { registeredMethods } from './decorators'
+import { MethodInfo, } from './decorators'
 import { reloadFile } from './reloader'
 
 const fs: typeof import('fs') = (0, eval)("require('fs')")
@@ -11,6 +11,8 @@ declare global {
 }
 
 class HotReload {
+    registeredMethods: MethodInfo[] = []
+
     constructor() {
         globalThis.hotreload = this
         if ('window' in global) {
@@ -31,9 +33,10 @@ class HotReload {
 
     async hotReload(pluginPath: string) {
         const rawJs = (await fs.promises.readFile(pluginPath)).toString()
-        reloadFile(rawJs, registeredMethods)
+        reloadFile(rawJs, this.registeredMethods)
     }
 }
+new HotReload()
 
 export default class HotReloadPlugin implements PluginClass {
     static dir: string
@@ -44,8 +47,6 @@ export default class HotReloadPlugin implements PluginClass {
         HotReloadPlugin.mod = mod
         HotReloadPlugin.mod.isCCL3 = mod.findAllAssets ? true : false
         HotReloadPlugin.mod.isCCModPacked = mod.baseDirectory.endsWith('.ccmod/')
-
-        new HotReload()
 
         if (!HotReloadPlugin.mod.isCCModPacked) {
             hotreload.listen(mod.baseDirectory + 'plugin.js')
