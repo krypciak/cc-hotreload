@@ -1,0 +1,13 @@
+{
+    "id": "cc-hotreload",
+    "version": "0.0.1",
+    "title": "Hot reload",
+    "description": "",
+    "repository": "https://github.com/krypciak/cc-hotreload",
+    "tags": ["dev"],
+    "authors": "krypek",
+    "icons": {
+        "24": "icon/icon.png"
+    },
+    "plugin": "plugin.js"
+}
