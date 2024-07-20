@@ -1,6 +1,10 @@
+// @ts-ignore errors out when something npm imports cc-hotreload
 import * as acorn from 'acorn'
+// @ts-ignore errors out when something npm imports cc-hotreload
 import * as estree from 'estree'
+// @ts-ignore errors out when something npm imports cc-hotreload
 import * as estraverse from 'estraverse'
+
 import { MethodInfo } from './decorators'
 
 export async function reloadFile(rawJs: string, methods: MethodInfo[]) {
@@ -40,7 +44,9 @@ function extractRawMethod(lines: string[], ast: estree.Program, className: strin
     const body = clazzDef?.body.body
     if (!body) return
 
-    const functions = body.filter(e => e.type == 'MethodDefinition') as estree.MethodDefinition[]
+    const functions = body.filter(
+        (e: estree.MethodDefinition | estree.PropertyDefinition | estree.StaticBlock) => e.type == 'MethodDefinition'
+    ) as estree.MethodDefinition[]
 
     const funcDef = functions.find(f => f.key.type == 'Identifier' && f.key.name == methodName)
     if (!funcDef) return
@@ -57,7 +63,7 @@ function extractRawMethod(lines: string[], ast: estree.Program, className: strin
 function getClassBody(ast: estree.Program, className: string): estree.ClassExpression | undefined {
     let result: estree.ClassExpression | undefined
     estraverse.traverse(ast, {
-        enter: function (node): void {
+        enter: function (node: estree.Node): void {
             // var ExampleClass = class { ...
             if (node.type === 'VariableDeclaration' && node.kind == 'var' && node.declarations.length == 1) {
                 const dec = node.declarations[0]
