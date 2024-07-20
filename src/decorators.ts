@@ -11,7 +11,7 @@ export function hotClass() {
     }
 }
 
-export function hot() {
+export function hotMethod() {
     return function (target: object, propertyKey: string, _descriptor: PropertyDescriptor) {
         hotreload.registeredMethods.push({ className: target.constructor.name, classInstance: target.constructor, methodName: propertyKey })
     }

@@ -13,29 +13,37 @@ export async function reloadFile(rawJs: string, methods: MethodInfo[]) {
 
     const lines: string[] = rawJs.split('\n')
 
-    for (const id of methods) {
-        reloadMethod(lines, ast, id)
+    for (let i = methods.length - 1; i >= 0; i--) {
+        const id = methods[i]
+        if (!reloadMethod(lines, ast, id)) {
+            console.warn(`Method: ${id.className}#${id.methodName} has been deleted. Removing from hot-reload list...`)
+            methods.splice(i, 1)
+        }
     }
 }
 
-export function reloadMethod(lines: string[], ast: estree.Program, methodInfo: MethodInfo): void {
+export function reloadMethod(lines: string[], ast: estree.Program, methodInfo: MethodInfo): boolean {
     const { className, classInstance, methodName } = methodInfo
     const funcRaw = extractRawMethod(lines, ast, className, methodName)
+    if (!funcRaw) return false
 
     const func = (0, eval)(funcRaw + `; ${methodName}`)
 
     classInstance.prototype[methodName] = func
+
+    return true
 }
 
-function extractRawMethod(lines: string[], ast: estree.Program, className: string, methodName: string): string {
-    const clazzDef = getClassNode(ast, className)
-    if (clazzDef.init?.type != 'ClassExpression') throw new Error()
-    const body = clazzDef.init.body.body
+function extractRawMethod(lines: string[], ast: estree.Program, className: string, methodName: string): string | undefined {
+    const clazzDef = getClassBody(ast, className)
+
+    const body = clazzDef?.body.body
+    if (!body) return
 
     const functions = body.filter(e => e.type == 'MethodDefinition') as estree.MethodDefinition[]
 
     const funcDef = functions.find(f => f.key.type == 'Identifier' && f.key.name == methodName)
-    if (!funcDef) throw new Error(`Method: ${methodName} not found`)
+    if (!funcDef) return
 
     const funcRawArr = lines.slice(funcDef.loc!.start.line - 1, funcDef.loc!.end.line)
     funcRawArr[0] = funcRawArr[0].slice(funcDef.loc!.start.column)
@@ -46,19 +54,39 @@ function extractRawMethod(lines: string[], ast: estree.Program, className: strin
     return funcRaw
 }
 
-function getClassNode(ast: estree.Program, className: string): estree.VariableDeclarator {
-    let result: estree.VariableDeclarator | undefined
+function getClassBody(ast: estree.Program, className: string): estree.ClassExpression | undefined {
+    let result: estree.ClassExpression | undefined
     estraverse.traverse(ast, {
         enter: function (node): void {
+            // var ExampleClass = class { ...
             if (node.type === 'VariableDeclaration' && node.kind == 'var' && node.declarations.length == 1) {
                 const dec = node.declarations[0]
-                if (dec.init && dec.id.type == 'Identifier' && dec.id.name == className) {
-                    result = dec
+                if (dec.id.type == 'Identifier' && dec.id.name == className && dec.init?.type == 'ClassExpression') {
+                    result = dec.init
                     this.break()
                 }
             }
+            // var ExampleClass
+            // ...
+            // ExampleClass = class ExampleClass { ...
+            if (node.type == 'ClassExpression' && node.id?.name == className) {
+                result = node
+                this.break()
+            }
+            // var ExampleClass
+            // ...
+            // ExampleClass = class { ...
+            if (
+                node.type == 'ExpressionStatement' &&
+                node.expression.type == 'AssignmentExpression' &&
+                node.expression.left.type == 'Identifier' &&
+                node.expression.left.name == className &&
+                node.expression.right.type == 'ClassExpression'
+            ) {
+                result = node.expression.right
+                this.break()
+            }
         },
     })
-    if (!result) throw new Error(`class: ${className} not found`)
     return result
 }

@@ -1,10 +1,9 @@
 import { PluginClass } from 'ultimate-crosscode-typedefs/modloader/mod'
 import { Mod1 } from './types'
-import { MethodInfo, } from './decorators'
+import { MethodInfo } from './decorators'
 import { reloadFile } from './reloader'
 
 const fs: typeof import('fs') = (0, eval)("require('fs')")
-// const fs: typeof import('fs') = require('fs')
 
 declare global {
     var hotreload: HotReload
@@ -47,10 +46,6 @@ export default class HotReloadPlugin implements PluginClass {
         HotReloadPlugin.mod = mod
         HotReloadPlugin.mod.isCCL3 = mod.findAllAssets ? true : false
         HotReloadPlugin.mod.isCCModPacked = mod.baseDirectory.endsWith('.ccmod/')
-
-        if (!HotReloadPlugin.mod.isCCModPacked) {
-            hotreload.listen(mod.baseDirectory + 'plugin.js')
-        }
     }
 
     async prestart() {}
