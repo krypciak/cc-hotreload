@@ -10,8 +10,6 @@ declare global {
 }
 
 class HotReload {
-    registeredMethods: MethodInfo[] = []
-
     constructor() {
         globalThis.hotreload = this
         if ('window' in global) {
@@ -19,20 +17,20 @@ class HotReload {
         }
     }
 
-    listen(pluginPath: string, interval: number = 100) {
+    listen(pluginPath: string, methodInfo: MethodInfo[], interval: number = 100) {
         fs.watchFile(
             pluginPath,
             {
                 persistent: false,
                 interval,
             },
-            () => this.hotReload(pluginPath)
+            () => this.hotReload(pluginPath, methodInfo)
         )
     }
 
-    async hotReload(pluginPath: string) {
+    async hotReload(pluginPath: string, methods: MethodInfo[]) {
         const rawJs = (await fs.promises.readFile(pluginPath)).toString()
-        reloadFile(rawJs, this.registeredMethods)
+        reloadFile(rawJs, methods)
     }
 }
 new HotReload()
